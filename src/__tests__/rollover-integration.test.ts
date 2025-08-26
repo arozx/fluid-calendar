@@ -3,7 +3,7 @@
  * Tests the service and API endpoints
  */
 
-import { startOfISOWeek, endOfISOWeek, addWeeks, subWeeks } from "date-fns";
+import { startOfISOWeek, endOfISOWeek, addWeeks } from "date-fns";
 
 // Mock dependencies before importing
 jest.mock("@/lib/date-utils", () => ({

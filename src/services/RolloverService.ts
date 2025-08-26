@@ -1,4 +1,5 @@
 import { startOfISOWeek, endOfISOWeek, addWeeks } from "date-fns";
+import type { Task } from "@prisma/client";
 
 import { newDate } from "@/lib/date-utils";
 import { logger } from "@/lib/logger";
@@ -157,7 +158,7 @@ export class RolloverService {
    * Check if a task should be rolled over
    * Prevents duplicates and validates conditions
    */
-  private async shouldRolloverTask(task: any): Promise<boolean> {
+  private async shouldRolloverTask(task: Task): Promise<boolean> {
     if (!task.dueDate) {
       return false;
     }
@@ -195,7 +196,7 @@ export class RolloverService {
   /**
    * Rollover a single task to the next week
    */
-  private async rolloverTask(task: any, result: RolloverResult): Promise<void> {
+  private async rolloverTask(task: Task, result: RolloverResult): Promise<void> {
     if (!task.dueDate) {
       throw new Error("Task has no due date");
     }
@@ -217,7 +218,7 @@ export class RolloverService {
     }
 
     // Update the task's due date
-    const updatedTask = await prisma.task.update({
+    await prisma.task.update({
       where: { id: task.id },
       data: {
         dueDate: newDueDate,

@@ -1,0 +1,14 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run Automated Rollover Test",
+			"type": "shell",
+			"command": "npx tsx automated-rollover-test.ts",
+			"group": "test",
+			"isBackground": false,
+			"problemMatcher": [],
+			"args": []
+		}
+	]
+}

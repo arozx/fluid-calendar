@@ -355,6 +355,106 @@ Add to your crontab for automatic execution:
 
 For detailed documentation, see [docs/ROLLOVER.md](docs/ROLLOVER.md).
 
+## Testing
+
+FluidCalendar includes comprehensive testing for all core functionality, including automated tests and interactive demonstrations.
+
+### Running Unit Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run unit tests only
+npm run test:unit
+
+# Run specific test patterns
+npm run test:unit -- --testPathPattern=rollover
+npm run test:unit -- --testPathPattern=date-utils
+```
+
+### Running Integration Tests
+
+```bash
+# Run integration tests
+npm run test:integration
+
+# Run rollover integration tests specifically
+npm run test:unit -- --testPathPattern=rollover-integration
+```
+
+### Interactive Testing & Demonstrations
+
+#### Visual Rollover Demonstration
+
+The visual rollover test provides an interactive demonstration of the weekly rollover process using the admin account:
+
+```bash
+# Run interactive visual demonstration
+npx tsx visual-rollover-test.ts
+```
+
+This demonstration:
+- Uses the admin account (`admin@admin.admin`) 
+- Creates realistic test tasks from the previous week
+- Shows before/after states with color-coded output
+- Explains each step of the rollover process
+- Automatically cleans up test data
+
+#### Manual Integration Testing
+
+For manual testing and validation:
+
+```bash
+# Create and run custom integration test
+npx tsx test-rollover-integration.ts
+
+# Test database connectivity
+npx tsx test-db-connection.ts
+```
+
+### Docker Environment Testing
+
+When using Docker for testing, run tests inside the container for proper database connectivity:
+
+```bash
+# Copy test scripts to container
+docker cp visual-rollover-test.ts fluid-calendar-app-1:/app/
+docker cp test-rollover-integration.ts fluid-calendar-app-1:/app/
+
+# Run tests inside container
+docker-compose exec app npx tsx visual-rollover-test.ts
+docker-compose exec app npx tsx test-rollover-integration.ts
+```
+
+### Test Database Setup
+
+The test environment includes:
+- **Admin account**: `admin@admin.admin` (used for demonstrations)
+- **Test data**: Created with `VISUAL_TEST_` prefix for easy cleanup
+- **Automatic cleanup**: Test scripts remove their data after completion
+
+### Continuous Integration
+
+Tests are designed to run in CI/CD pipelines with:
+- Docker Compose for isolated test environments
+- Prisma for database schema management
+- Jest for automated testing framework
+- TypeScript for type safety
+
+### Test Coverage
+
+Current test coverage includes:
+- ✅ **Rollover Service**: Unit and integration tests
+- ✅ **Date Utilities**: Date calculation and ISO week handling
+- ✅ **Error Handling**: Throttling and validation
+- ✅ **Database Operations**: CRUD operations and transactions
+- ✅ **Interactive Demos**: Visual testing and validation
+
+For test-specific documentation, see individual test files in `src/__tests__/` and the root-level test scripts.
+
+**📚 For comprehensive testing documentation, see [docs/testing.md](docs/testing.md).**
+
 ## Need Professional Help?
 
 Don't want to handle the migration yourself? We offer a complete done-for-you service that includes:

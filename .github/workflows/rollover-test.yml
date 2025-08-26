@@ -1,0 +1,77 @@
+name: Rollover Integration Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run every Monday at 1:00 AM UTC (after the production rollover)
+    - cron: '0 1 * * 1'
+  workflow_dispatch:
+    # Allow manual triggering
+
+jobs:
+  test-rollover:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: fluid_calendar
+          POSTGRES_USER: fluid
+          POSTGRES_PASSWORD: fluid
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Setup database schema
+      env:
+        DATABASE_URL: postgresql://fluid:fluid@localhost:5432/fluid_calendar
+      run: |
+        npx prisma migrate deploy
+        npx prisma db seed
+
+    - name: Run automated rollover test
+      env:
+        DATABASE_URL: postgresql://fluid:fluid@localhost:5432/fluid_calendar
+        NEXTAUTH_SECRET: test-secret-key-for-ci
+      run: |
+        echo "🚀 Running automated rollover integration test..."
+        npx tsx automated-rollover-test.ts
+
+    - name: Run visual rollover test (automated)
+      env:
+        DATABASE_URL: postgresql://fluid:fluid@localhost:5432/fluid_calendar
+        NEXTAUTH_SECRET: test-secret-key-for-ci
+      run: |
+        echo "🎭 Running visual rollover demonstration..."
+        npx tsx visual-rollover-test.ts
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: rollover-test-results
+        path: |
+          test-results/
+          logs/
+        retention-days: 30

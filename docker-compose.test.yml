@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  rollover-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://fluid:fluid@db:5432/fluid_calendar
+      - NEXTAUTH_SECRET=test-secret-key
+      - NEXTAUTH_URL=http://localhost:3000
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./automated-rollover-test.ts:/app/automated-rollover-test.ts
+      - ./visual-rollover-test.ts:/app/visual-rollover-test.ts
+      - ./src:/app/src
+    command: |
+      sh -c "
+        echo '🚀 Running automated rollover tests...'
+        npx tsx automated-rollover-test.ts
+        echo '🎭 Running visual rollover demonstration...'
+        npx tsx visual-rollover-test.ts
+        echo '✅ All rollover tests completed!'
+      "
+    networks:
+      - fluid-network
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: fluid_calendar
+      POSTGRES_USER: fluid
+      POSTGRES_PASSWORD: fluid
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fluid -d fluid_calendar"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - fluid-network
+
+volumes:
+  postgres_data:
+
+networks:
+  fluid-network:
+    driver: bridge

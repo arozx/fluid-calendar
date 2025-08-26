@@ -14,6 +14,11 @@
     "type-check": "tsc --noEmit",
     "test:unit": "jest",
     "test:e2e": "playwright test",
+    "test": "npm run test:unit && npm run test:e2e",
+    "test:integration": "jest --testPathPattern=integration",
+    "test:rollover": "jest --testPathPattern=rollover",
+    "test:visual": "tsx visual-rollover-test.ts",
+    "test:db": "tsx test-db-connection.ts",
     "prisma:generate": "prisma generate",
     "prisma:studio": "prisma studio",
     "clean": "rm -rf .next node_modules",
@@ -27,6 +32,8 @@
     "start:worker": "node dist/saas/jobs/worker.js",
     "start:worker:prod": "infisical run --token=\"$INFISICAL_TOKEN\" --projectId=\"$PROJECT_ID\" --env=\"$INFISICAL_SECRET_ENV\" --domain=\"$INFISICAL_API_URL\" -- node dist/saas/jobs/worker-with-aliases.js",
     "docker:publish": "docker build -t fluid-calendar:prod -f docker/production/Dockerfile . && docker tag fluid-calendar:prod eibrahim/fluid-calendar:latest && docker push eibrahim/fluid-calendar:latest",
+    "rollover": "tsx scripts/rollover.ts",
+    "rollover:dry": "tsx scripts/rollover.ts --dry-run",
     "prepare": "husky"
   },
   "dependencies": {

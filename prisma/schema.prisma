@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,31 +7,8 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model ConnectedAccount {
-  id             String         @id @default(cuid())
-  provider       String // "GOOGLE" | "OUTLOOK" | "CALDAV"
-  email          String
-  accessToken    String
-  refreshToken   String?
-  expiresAt      DateTime
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  calendars      CalendarFeed[]
-  // CalDAV specific fields
-  caldavUrl      String? // Base URL for CalDAV server
-  caldavUsername String? // Username for Basic Auth
-
-  // User relationship
-  userId       String?
-  user         User?          @relation(fields: [userId], references: [id])
-  TaskProvider TaskProvider[]
-
-  @@unique([userId, provider, email])
-  @@index([userId])
-}
-
 model Account {
-  id                String  @id @default(cuid())
+  id                String  @id
   userId            String
   type              String
   provider          String
@@ -46,420 +20,31 @@ model Account {
   scope             String?
   id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  User              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
 
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model User {
-  id                   String                @id @default(cuid())
-  name                 String?
-  email                String?               @unique
-  emailVerified        DateTime?
-  image                String?
-  role                 String                @default("user") // Possible values: "user", "admin"
-  subscription         Subscription?
-  accounts             Account[]
-  sessions             Session[]
-  calendars            CalendarFeed[]
-  autoScheduleSettings AutoScheduleSettings?
-  userSettings         UserSettings?
-  calendarSettings     CalendarSettings?
-  notificationSettings NotificationSettings?
-  integrationSettings  IntegrationSettings?
-  dataSettings         DataSettings?
-  tasks                Task[]
-  projects             Project[]
-  connectedAccounts    ConnectedAccount[]
-  tags                 Tag[]
-  JobRecord            JobRecord[]
-  taskProviders        TaskProvider[]
-  TaskChange           TaskChange[]
-  PasswordReset        PasswordReset[]
-}
-
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
-
-  @@unique([identifier, token])
-}
-
-model CalendarFeed {
-  id                String            @id @default(uuid())
-  name              String
-  url               String? // Optional for local calendars
-  type              String // "LOCAL", "GOOGLE", "OUTLOOK", "CALDAV"
-  color             String? // Add back color field
-  enabled           Boolean           @default(true)
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  lastSync          DateTime?
-  syncToken         String? // For incremental sync
-  error             String?
-  channelId         String? // Google Calendar webhook channel ID
-  resourceId        String? // Google Calendar webhook resource ID
-  channelExpiration DateTime? // When the webhook expires
-  events            CalendarEvent[]
-  userId            String?
-  user              User?             @relation(fields: [userId], references: [id])
-  accountId         String?
-  account           ConnectedAccount? @relation(fields: [accountId], references: [id])
-  // CalDAV specific fields
-  caldavPath        String? // Path to the specific calendar on the server
-  ctag              String? // CalDAV collection tag for change detection
-
-  @@index([accountId])
-}
-
-model CalendarEvent {
-  id              String       @id @default(uuid())
-  feedId          String
-  feed            CalendarFeed @relation(fields: [feedId], references: [id], onDelete: Cascade)
-  externalEventId String? // External Calendar Event ID (Google, Outlook, etc.)
-  title           String
-  description     String?
-  start           DateTime
-  end             DateTime
-  location        String?
-  isRecurring     Boolean      @default(false)
-  recurrenceRule  String?
-  allDay          Boolean      @default(false)
-  status          String?
-  sequence        Int?
-  created         DateTime?
-  lastModified    DateTime?
-  organizer       Json? // Stored as JSON { name?: string, email: string }
-  attendees       Json? // Stored as JSON array of { name?: string, email: string, status?: string }
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-
-  // New fields for hybrid approach
-  isMaster         Boolean         @default(false) // True if this is a master event
-  masterEventId    String? // Reference to the master event for instances
-  masterEvent      CalendarEvent?  @relation("EventInstances", fields: [masterEventId], references: [id], onDelete: Cascade)
-  instances        CalendarEvent[] @relation("EventInstances")
-  recurringEventId String? // Google Calendar's recurring event ID
-
-  @@index([feedId])
-  @@index([start, end])
-  @@index([externalEventId])
-  @@index([masterEventId])
-  @@index([recurringEventId])
-}
-
-model Project {
-  id               String            @id @default(cuid())
-  name             String
-  description      String?
-  color            String?
-  status           String            @default("active") // enum: 'active', 'archived'
-  tasks            Task[]
-  taskListMappings TaskListMapping[]
-
-  // External sync fields
-  externalId     String?
-  externalSource String?
-  lastSyncedAt   DateTime?
-
-  // User relationship
-  userId String?
-  user   User?   @relation(fields: [userId], references: [id])
-
-  // Metadata
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([status])
-  @@index([userId])
-  @@index([externalId, externalSource])
-}
-
-model Task {
-  id          String  @id @default(cuid())
-  title       String
-  description String?
-  status      String // enum: 'todo', 'in_progress', 'completed'
-
-  // Time Management
-  dueDate       DateTime?
-  startDate     DateTime? // When the task becomes active
-  duration      Int? // estimated duration in minutes
-  priority      String? // enum: 'high', 'medium', 'low', 'none'
-  energyLevel   String? // enum: 'high', 'medium', 'low'
-  preferredTime String? // enum: 'morning', 'afternoon', 'evening'
-
-  // Auto-scheduling
-  isAutoScheduled Boolean   @default(false)
-  scheduleLocked  Boolean   @default(false)
-  scheduledStart  DateTime?
-  scheduledEnd    DateTime?
-  scheduleScore   Float?
-  lastScheduled   DateTime?
-  postponedUntil  DateTime? // New field for postponing tasks
-
-  // Organization
-  tags Tag[]
-
-  // Recurrence
-  isRecurring       Boolean   @default(false)
-  recurrenceRule    String?
-  lastCompletedDate DateTime?
-  completedAt       DateTime? // When the task was marked as completed
-
-  // External Integration
-  externalTaskId String?
-  source         String?
-  lastSyncedAt   DateTime?
-
-  // Enhanced sync fields
-  externalListId    String? // The external list/folder ID this task belongs to
-  externalCreatedAt DateTime? // When the task was created in the external system
-  externalUpdatedAt DateTime? // When the task was last updated in the external system
-  syncStatus        String? // 'synced', 'pending', 'error', etc.
-  syncError         String? // Error message if sync failed
-  syncHash          String? // Hash of task data for detecting changes
-  skipSync          Boolean   @default(false) // Flag to skip syncing this task
-
-  // Change tracking relation
-  changes TaskChange[]
-
-  // User relationship
-  userId String?
-  user   User?   @relation(fields: [userId], references: [id])
-
-  // Metadata
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  projectId String?
-  project   Project? @relation(fields: [projectId], references: [id])
-
-  @@index([status])
-  @@index([dueDate])
-  @@index([startDate])
-  @@index([priority])
-  @@index([projectId])
-  @@index([isRecurring])
-  @@index([isAutoScheduled])
-  @@index([scheduledStart, scheduledEnd])
-  @@index([externalTaskId])
-  @@index([source])
-  @@index([postponedUntil])
-  @@index([userId])
-  @@index([externalTaskId, source])
-  @@index([syncStatus])
-  @@index([externalListId])
-}
-
-model Tag {
-  id    String  @id @default(cuid())
-  name  String
-  color String?
-  tasks Task[]
-
-  // User relationship
-  userId String?
-  user   User?   @relation(fields: [userId], references: [id])
-
-  @@unique([name, userId])
-  @@index([name])
-  @@index([userId])
-}
-
 model AutoScheduleSettings {
-  id     String @id @default(cuid())
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // Work Hours
-  workDays      String @default("[]") // JSON string of numbers 0-6
-  workHourStart Int // 0-23
-  workHourEnd   Int // 0-23
-
-  // Preferences
-  selectedCalendars String @default("[]") // JSON string of calendar IDs
-  bufferMinutes     Int    @default(15)
-
-  // Energy Level Mappings
-  highEnergyStart   Int? // 0-23
-  highEnergyEnd     Int? // 0-23
-  mediumEnergyStart Int? // 0-23
-  mediumEnergyEnd   Int? // 0-23
-  lowEnergyStart    Int? // 0-23
-  lowEnergyEnd      Int? // 0-23
-
-  // Project Settings
-  groupByProject Boolean @default(false)
-
-  // Metadata
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                String   @id
+  userId            String   @unique
+  workDays          String   @default("[]")
+  workHourStart     Int
+  workHourEnd       Int
+  selectedCalendars String   @default("[]")
+  bufferMinutes     Int      @default(15)
+  highEnergyStart   Int?
+  highEnergyEnd     Int?
+  mediumEnergyStart Int?
+  mediumEnergyEnd   Int?
+  lowEnergyStart    Int?
+  lowEnergyEnd      Int?
+  groupByProject    Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime
+  User              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
-}
-
-model UserSettings {
-  id           String   @id @default(cuid())
-  userId       String   @unique
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  theme        String   @default("system") // "light", "dark", "system"
-  defaultView  String   @default("week") // "day", "week", "month", "agenda"
-  timeZone     String
-  weekStartDay String   @default("sunday") // "monday", "sunday"
-  timeFormat   String   @default("12h") // "12h", "24h"
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@index([userId])
-}
-
-model CalendarSettings {
-  id                  String   @id @default(cuid())
-  userId              String   @unique
-  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  defaultCalendarId   String?
-  workingHoursEnabled Boolean  @default(true)
-  workingHoursStart   String   @default("09:00") // HH:mm format
-  workingHoursEnd     String   @default("17:00") // HH:mm format
-  workingHoursDays    String   @default("[1,2,3,4,5]") // JSON string of numbers 0-6
-  defaultDuration     Int      @default(60) // minutes
-  defaultColor        String   @default("#3b82f6")
-  defaultReminder     Int      @default(30) // minutes
-  refreshInterval     Int      @default(5) // minutes
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-
-  @@index([userId])
-}
-
-model NotificationSettings {
-  id                    String   @id @default(cuid())
-  userId                String   @unique
-  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  emailNotifications    Boolean  @default(true)
-  dailyEmailEnabled     Boolean  @default(true) // Controls whether the user receives daily email updates
-  eventInvites          Boolean  @default(true)
-  eventUpdates          Boolean  @default(true)
-  eventCancellations    Boolean  @default(true)
-  eventReminders        Boolean  @default(true)
-  defaultReminderTiming String   @default("[30]") // JSON string of minutes before event
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-
-  @@index([userId])
-}
-
-model IntegrationSettings {
-  id                      String   @id @default(cuid())
-  userId                  String   @unique
-  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  googleCalendarEnabled   Boolean  @default(true)
-  googleCalendarAutoSync  Boolean  @default(true)
-  googleCalendarInterval  Int      @default(5) // minutes
-  outlookCalendarEnabled  Boolean  @default(true)
-  outlookCalendarAutoSync Boolean  @default(true)
-  outlookCalendarInterval Int      @default(5) // minutes
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
-
-  @@index([userId])
-}
-
-model DataSettings {
-  id             String   @id @default(cuid())
-  userId         String   @unique
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  autoBackup     Boolean  @default(true)
-  backupInterval Int      @default(7) // days
-  retainDataFor  Int      @default(365) // days
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  @@index([userId])
-}
-
-model SystemSettings {
-  id                  String   @id @default(cuid())
-  googleClientId      String?
-  googleClientSecret  String?
-  outlookClientId     String?
-  outlookClientSecret String?
-  outlookTenantId     String?
-  logLevel            String   @default("none") // none, debug, info, warn, error
-  logRetention        Json? // Retention periods per log level
-  logDestination      String   @default("db") // db, file, both
-  publicSignup        Boolean  @default(false) // Whether public signup is enabled
-  disableHomepage     Boolean  @default(false) // Whether to disable the homepage and redirect to login/calendar
-  resendApiKey        String? // API key for Resend email service
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-}
-
-model Log {
-  id        String   @id @default(cuid())
-  timestamp DateTime @default(now())
-  level     String // INFO, WARN, ERROR, DEBUG
-  message   String   @db.Text
-  metadata  Json? // For structured data
-  source    String? // Component/service name
-  expiresAt DateTime // For TTL-based cleanup
-
-  @@index([timestamp, level])
-  @@index([expiresAt])
-  @@index([source, level])
-}
-
-model PendingWaitlist {
-  id                   String   @id @default(cuid())
-  email                String   @unique
-  name                 String?
-  referralCode         String? // Referral code used during signup
-  verificationToken    String   @unique
-  verificationExpiry   DateTime
-  interestedInLifetime Boolean  @default(false)
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-
-  @@index([verificationToken])
-  @@index([email])
-}
-
-model Waitlist {
-  id                        String    @id @default(cuid())
-  email                     String    @unique
-  name                      String?
-  status                    String    @default("WAITING") // WAITING, INVITED, REGISTERED
-  createdAt                 DateTime  @default(now())
-  updatedAt                 DateTime  @updatedAt
-  invitedAt                 DateTime?
-  registeredAt              DateTime?
-  invitationToken           String?
-  invitationExpiry          DateTime?
-  referralCode              String    @unique
-  referredBy                String?
-  referralCount             Int       @default(0)
-  priorityScore             Float     @default(0)
-  lastVisitedAt             DateTime?
-  notes                     String?
-  lastPosition              Int? // Added to track position changes
-  interestedInLifetime      Boolean   @default(false)
-  queueNotificationsEnabled Boolean   @default(true) // Controls whether to send queue position notifications
-
-  @@index([status])
-  @@index([referredBy])
-  @@index([priorityScore])
-  @@index([referralCode])
 }
 
 model BetaSettings {
@@ -468,19 +53,146 @@ model BetaSettings {
   invitationValidDays          Int     @default(7)
   autoInviteEnabled            Boolean @default(false)
   autoInviteCount              Int     @default(10)
-  autoInviteFrequency          String  @default("WEEKLY") // DAILY, WEEKLY, MONTHLY
+  autoInviteFrequency          String  @default("WEEKLY")
   referralBoostAmount          Float   @default(1.0)
   maxReferralBoost             Float   @default(10.0)
   showQueuePosition            Boolean @default(true)
   showTotalWaitlist            Boolean @default(true)
-  invitationEmailTemplate      String  @default("") @db.Text
-  waitlistConfirmationTemplate String  @default("") @db.Text
-  reminderEmailTemplate        String  @default("") @db.Text
+  invitationEmailTemplate      String  @default("")
+  waitlistConfirmationTemplate String  @default("")
+  reminderEmailTemplate        String  @default("")
 }
 
-// Job tracking models for BullMQ
+model CalendarEvent {
+  id                  String          @id
+  feedId              String
+  externalEventId     String?
+  title               String
+  description         String?
+  start               DateTime
+  end                 DateTime
+  location            String?
+  isRecurring         Boolean         @default(false)
+  recurrenceRule      String?
+  allDay              Boolean         @default(false)
+  status              String?
+  sequence            Int?
+  created             DateTime?
+  lastModified        DateTime?
+  organizer           Json?
+  attendees           Json?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime
+  isMaster            Boolean         @default(false)
+  masterEventId       String?
+  recurringEventId    String?
+  CalendarFeed        CalendarFeed    @relation(fields: [feedId], references: [id], onDelete: Cascade)
+  CalendarEvent       CalendarEvent?  @relation("CalendarEventToCalendarEvent", fields: [masterEventId], references: [id], onDelete: Cascade)
+  other_CalendarEvent CalendarEvent[] @relation("CalendarEventToCalendarEvent")
+
+  @@index([externalEventId])
+  @@index([feedId])
+  @@index([masterEventId])
+  @@index([recurringEventId])
+  @@index([start, end])
+}
+
+model CalendarFeed {
+  id                String            @id
+  name              String
+  url               String?
+  type              String
+  color             String?
+  enabled           Boolean           @default(true)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime
+  lastSync          DateTime?
+  syncToken         String?
+  error             String?
+  channelId         String?
+  resourceId        String?
+  channelExpiration DateTime?
+  userId            String?
+  accountId         String?
+  caldavPath        String?
+  ctag              String?
+  CalendarEvent     CalendarEvent[]
+  ConnectedAccount  ConnectedAccount? @relation(fields: [accountId], references: [id])
+  User              User?             @relation(fields: [userId], references: [id])
+
+  @@index([accountId])
+}
+
+model CalendarSettings {
+  id                  String   @id
+  userId              String   @unique
+  defaultCalendarId   String?
+  workingHoursEnabled Boolean  @default(true)
+  workingHoursStart   String   @default("09:00")
+  workingHoursEnd     String   @default("17:00")
+  workingHoursDays    String   @default("[1,2,3,4,5]")
+  defaultDuration     Int      @default(60)
+  defaultColor        String   @default("#3b82f6")
+  defaultReminder     Int      @default(30)
+  refreshInterval     Int      @default(5)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime
+  User                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model ConnectedAccount {
+  id             String         @id
+  provider       String
+  email          String
+  accessToken    String
+  refreshToken   String?
+  expiresAt      DateTime
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime
+  caldavUrl      String?
+  caldavUsername String?
+  userId         String?
+  CalendarFeed   CalendarFeed[]
+  User           User?          @relation(fields: [userId], references: [id])
+  TaskProvider   TaskProvider[]
+
+  @@unique([userId, provider, email])
+  @@index([userId])
+}
+
+model DataSettings {
+  id             String   @id
+  userId         String   @unique
+  autoBackup     Boolean  @default(true)
+  backupInterval Int      @default(7)
+  retainDataFor  Int      @default(365)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime
+  User           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model IntegrationSettings {
+  id                      String   @id
+  userId                  String   @unique
+  googleCalendarEnabled   Boolean  @default(true)
+  googleCalendarAutoSync  Boolean  @default(true)
+  googleCalendarInterval  Int      @default(5)
+  outlookCalendarEnabled  Boolean  @default(true)
+  outlookCalendarAutoSync Boolean  @default(true)
+  outlookCalendarInterval Int      @default(5)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime
+  User                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
 model JobRecord {
-  id          String    @id @default(cuid())
+  id          String    @id
   queueName   String
   jobId       String
   name        String
@@ -491,17 +203,366 @@ model JobRecord {
   attempts    Int       @default(0)
   maxAttempts Int       @default(3)
   createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  updatedAt   DateTime
   startedAt   DateTime?
   finishedAt  DateTime?
   userId      String?
-  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  User        User?     @relation(fields: [userId], references: [id])
 
   @@unique([queueName, jobId])
-  @@index([status])
-  @@index([queueName])
-  @@index([userId])
   @@index([createdAt])
+  @@index([queueName])
+  @@index([status])
+  @@index([userId])
+}
+
+model Log {
+  id        String   @id
+  timestamp DateTime @default(now())
+  level     String
+  message   String
+  metadata  Json?
+  source    String?
+  expiresAt DateTime
+
+  @@index([expiresAt])
+  @@index([source, level])
+  @@index([timestamp, level])
+}
+
+model NotificationSettings {
+  id                    String   @id
+  userId                String   @unique
+  emailNotifications    Boolean  @default(true)
+  eventInvites          Boolean  @default(true)
+  eventUpdates          Boolean  @default(true)
+  eventCancellations    Boolean  @default(true)
+  eventReminders        Boolean  @default(true)
+  defaultReminderTiming String   @default("[30]")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime
+  dailyEmailEnabled     Boolean  @default(true)
+  User                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model PasswordReset {
+  id        String    @id
+  userId    String
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  User      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+}
+
+model PendingWaitlist {
+  id                   String   @id
+  email                String   @unique
+  name                 String?
+  referralCode         String?
+  verificationToken    String   @unique
+  verificationExpiry   DateTime
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime
+  interestedInLifetime Boolean  @default(false)
+
+  @@index([email])
+  @@index([verificationToken])
+}
+
+model Project {
+  id              String            @id
+  name            String
+  description     String?
+  color           String?
+  status          String            @default("active")
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime
+  userId          String?
+  externalId      String?
+  externalSource  String?
+  lastSyncedAt    DateTime?
+  User            User?             @relation(fields: [userId], references: [id])
+  Task            Task[]
+  TaskListMapping TaskListMapping[]
+
+  @@index([externalId, externalSource])
+  @@index([status])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  User         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Subscription {
+  id                    String             @id
+  userId                String             @unique
+  plan                  SubscriptionPlan   @default(FREE)
+  status                SubscriptionStatus @default(ACTIVE)
+  stripeCustomerId      String?            @unique
+  stripePaymentIntentId String?            @unique
+  amount                Int?
+  discountApplied       Boolean            @default(false)
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime
+  User                  User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([stripeCustomerId])
+  @@index([stripePaymentIntentId])
+}
+
+model SystemSettings {
+  id                  String   @id
+  googleClientId      String?
+  googleClientSecret  String?
+  outlookClientId     String?
+  outlookClientSecret String?
+  outlookTenantId     String?
+  logLevel            String   @default("none")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime
+  logDestination      String   @default("db")
+  logRetention        Json?
+  publicSignup        Boolean  @default(false)
+  disableHomepage     Boolean  @default(false)
+  resendApiKey        String?
+}
+
+model Tag {
+  id     String  @id
+  name   String
+  color  String?
+  userId String?
+  User   User?   @relation(fields: [userId], references: [id])
+  Task   Task[]
+
+  @@unique([name, userId])
+  @@index([name])
+  @@index([userId])
+}
+
+model Task {
+  id                String       @id
+  title             String
+  description       String?
+  status            String
+  dueDate           DateTime?
+  duration          Int?
+  priority          String?
+  energyLevel       String?
+  preferredTime     String?
+  isAutoScheduled   Boolean      @default(false)
+  scheduleLocked    Boolean      @default(false)
+  scheduledStart    DateTime?
+  scheduledEnd      DateTime?
+  scheduleScore     Float?
+  lastScheduled     DateTime?
+  isRecurring       Boolean      @default(false)
+  recurrenceRule    String?
+  lastCompletedDate DateTime?
+  externalTaskId    String?
+  source            String?
+  lastSyncedAt      DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime
+  projectId         String?
+  postponedUntil    DateTime?
+  completedAt       DateTime?
+  userId            String?
+  startDate         DateTime?
+  externalCreatedAt DateTime?
+  externalListId    String?
+  externalUpdatedAt DateTime?
+  skipSync          Boolean      @default(false)
+  syncError         String?
+  syncHash          String?
+  syncStatus        String?
+  Project           Project?     @relation(fields: [projectId], references: [id])
+  User              User?        @relation(fields: [userId], references: [id])
+  TaskChange        TaskChange[]
+  Tag               Tag[]
+
+  @@index([dueDate])
+  @@index([externalListId])
+  @@index([externalTaskId])
+  @@index([externalTaskId, source])
+  @@index([isAutoScheduled])
+  @@index([isRecurring])
+  @@index([postponedUntil])
+  @@index([priority])
+  @@index([projectId])
+  @@index([scheduledStart, scheduledEnd])
+  @@index([source])
+  @@index([startDate])
+  @@index([status])
+  @@index([syncStatus])
+  @@index([userId])
+}
+
+model TaskChange {
+  id              String           @id
+  taskId          String?
+  providerId      String?
+  mappingId       String?
+  changeType      String
+  changeData      Json?
+  synced          Boolean          @default(false)
+  timestamp       DateTime         @default(now())
+  userId          String
+  createdAt       DateTime         @default(now())
+  TaskListMapping TaskListMapping? @relation(fields: [mappingId], references: [id])
+  TaskProvider    TaskProvider?    @relation(fields: [providerId], references: [id])
+  Task            Task?            @relation(fields: [taskId], references: [id])
+  User            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([changeType])
+  @@index([mappingId])
+  @@index([providerId])
+  @@index([synced])
+  @@index([taskId])
+  @@index([timestamp])
+  @@index([userId])
+}
+
+model TaskListMapping {
+  id               String       @id
+  providerId       String
+  projectId        String
+  externalListId   String
+  externalListName String
+  direction        String       @default("incoming")
+  isDefault        Boolean      @default(false)
+  syncEnabled      Boolean      @default(true)
+  isAutoScheduled  Boolean      @default(true)
+  lastSyncedAt     DateTime?
+  syncStatus       String?
+  lastError        String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime
+  TaskChange       TaskChange[]
+  Project          Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  TaskProvider     TaskProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, externalListId])
+  @@unique([providerId, projectId])
+  @@index([externalListId])
+  @@index([projectId])
+  @@index([providerId])
+}
+
+model TaskProvider {
+  id               String            @id
+  userId           String
+  type             String
+  name             String
+  enabled          Boolean           @default(true)
+  syncEnabled      Boolean           @default(true)
+  syncInterval     String            @default("hourly")
+  lastSyncedAt     DateTime?
+  accessToken      String?
+  refreshToken     String?
+  expiresAt        DateTime?
+  settings         Json?
+  error            String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime
+  accountId        String?
+  defaultProjectId String?
+  TaskChange       TaskChange[]
+  TaskListMapping  TaskListMapping[]
+  ConnectedAccount ConnectedAccount? @relation(fields: [accountId], references: [id])
+  User             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type])
+  @@index([type])
+  @@index([userId])
+}
+
+model User {
+  id                   String                @id
+  name                 String?
+  email                String?               @unique
+  emailVerified        DateTime?
+  image                String?
+  role                 String                @default("user")
+  Account              Account[]
+  AutoScheduleSettings AutoScheduleSettings?
+  CalendarFeed         CalendarFeed[]
+  CalendarSettings     CalendarSettings?
+  ConnectedAccount     ConnectedAccount[]
+  DataSettings         DataSettings?
+  IntegrationSettings  IntegrationSettings?
+  JobRecord            JobRecord[]
+  NotificationSettings NotificationSettings?
+  PasswordReset        PasswordReset[]
+  Project              Project[]
+  Session              Session[]
+  Subscription         Subscription?
+  Tag                  Tag[]
+  Task                 Task[]
+  TaskChange           TaskChange[]
+  TaskProvider         TaskProvider[]
+  UserSettings         UserSettings?
+}
+
+model UserSettings {
+  id           String   @id
+  userId       String   @unique
+  theme        String   @default("system")
+  defaultView  String   @default("week")
+  timeZone     String
+  weekStartDay String   @default("sunday")
+  timeFormat   String   @default("12h")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime
+  User         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Waitlist {
+  id                        String    @id
+  email                     String    @unique
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime
+  name                      String?
+  invitationExpiry          DateTime?
+  invitationToken           String?
+  invitedAt                 DateTime?
+  lastVisitedAt             DateTime?
+  notes                     String?
+  priorityScore             Float     @default(0)
+  referralCode              String    @unique
+  referralCount             Int       @default(0)
+  referredBy                String?
+  registeredAt              DateTime?
+  status                    String    @default("WAITING")
+  lastPosition              Int?
+  interestedInLifetime      Boolean   @default(false)
+  queueNotificationsEnabled Boolean   @default(true)
+
+  @@index([priorityScore])
+  @@index([referralCode])
+  @@index([referredBy])
+  @@index([status])
 }
 
 enum JobStatus {
@@ -513,100 +574,6 @@ enum JobStatus {
   PAUSED
 }
 
-// New models for task synchronization
-model TaskProvider {
-  id               String            @id @default(cuid())
-  userId           String
-  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type             String // 'outlook', 'google', etc.
-  name             String
-  enabled          Boolean           @default(true)
-  syncEnabled      Boolean           @default(true)
-  syncInterval     String            @default("hourly") // 'hourly', 'daily', 'manual'
-  lastSyncedAt     DateTime?
-  accessToken      String?
-  refreshToken     String?
-  expiresAt        DateTime?
-  accountId        String? // References a ConnectedAccount
-  account          ConnectedAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
-  defaultProjectId String? // Default project for tasks without a list mapping
-  settings         Json? // Provider-specific settings
-  mappings         TaskListMapping[]
-  error            String?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  TaskChange       TaskChange[]
-
-  @@unique([userId, type])
-  @@index([userId])
-  @@index([type])
-}
-
-model TaskListMapping {
-  id               String       @id @default(cuid())
-  providerId       String
-  provider         TaskProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  projectId        String
-  project          Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  externalListId   String // ID of the external task list
-  externalListName String // Name of the external task list
-  direction        String       @default("incoming") // 'incoming', 'outgoing', 'bidirectional'
-  isDefault        Boolean      @default(false)
-  syncEnabled      Boolean      @default(true)
-  isAutoScheduled  Boolean      @default(true)
-  lastSyncedAt     DateTime?
-  syncStatus       String?
-  lastError        String?
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
-  TaskChange       TaskChange[]
-
-  @@unique([providerId, projectId])
-  @@unique([providerId, externalListId])
-  @@index([providerId])
-  @@index([projectId])
-  @@index([externalListId])
-}
-
-// New model for task change tracking
-model TaskChange {
-  id         String           @id @default(cuid())
-  taskId     String? // ID of the task that changed
-  task       Task?            @relation(fields: [taskId], references: [id], onDelete: SetNull)
-  providerId String? // ID of the provider if this is related to a sync
-  provider   TaskProvider?    @relation(fields: [providerId], references: [id], onDelete: SetNull)
-  mappingId  String? // ID of the mapping if this is related to a list sync
-  mapping    TaskListMapping? @relation(fields: [mappingId], references: [id], onDelete: SetNull)
-  changeType String // 'CREATE', 'UPDATE', 'DELETE'
-  changeData Json? // The actual changes, as a diff
-  synced     Boolean          @default(false) // Whether this change has been synced
-  timestamp  DateTime         @default(now())
-  userId     String // User who made the change
-  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt  DateTime         @default(now())
-
-  @@index([taskId])
-  @@index([providerId])
-  @@index([mappingId])
-  @@index([changeType])
-  @@index([synced])
-  @@index([timestamp])
-  @@index([userId])
-}
-
-model PasswordReset {
-  id        String    @id @default(cuid())
-  userId    String
-  token     String    @unique
-  expiresAt DateTime
-  usedAt    DateTime?
-  createdAt DateTime  @default(now())
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([token])
-  @@index([userId])
-}
-
 enum SubscriptionPlan {
   FREE
   LIFETIME
@@ -616,21 +583,4 @@ enum SubscriptionStatus {
   ACTIVE
   PAYMENT_PENDING
   PAYMENT_FAILED
-}
-
-model Subscription {
-  id                    String             @id @default(cuid())
-  userId                String             @unique
-  user                  User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  plan                  SubscriptionPlan   @default(FREE)
-  status                SubscriptionStatus @default(ACTIVE)
-  stripeCustomerId      String?            @unique
-  stripePaymentIntentId String?            @unique // For one-time payments like lifetime access
-  amount                Int? // Amount paid in cents
-  discountApplied       Boolean            @default(false)
-  createdAt             DateTime           @default(now())
-  updatedAt             DateTime           @updatedAt
-
-  @@index([stripeCustomerId])
-  @@index([stripePaymentIntentId])
 }

@@ -49,6 +49,7 @@ Don't want to self-host? We're currently beta testing our hosted version at [Flu
 - 🤖 **Intelligent Task Scheduling** - Automatically schedule tasks based on your preferences and availability
 - 📅 **Calendar Integration** - Seamless sync with Google Calendar (more providers coming soon)
 - ⚡ **Smart Time Slot Management** - Finds optimal time slots based on your work hours and buffer preferences
+- 🔄 **Weekly Task Rollover** - Automatically moves incomplete tasks to the next week (Monday 00:00 UTC)
 - 🎨 **Modern UI** - Clean, responsive interface with smooth transitions
 - 🔧 **Customizable** - Adjust scheduling algorithms and preferences to your needs
 - 🔒 **Privacy-Focused** - Self-host your own instance
@@ -306,6 +307,153 @@ bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+## Weekly Task Rollover
+
+FluidCalendar includes an automatic weekly task rollover feature that moves incomplete tasks from the previous ISO week to the current week. This ensures that unfinished tasks don't get lost during week transitions.
+
+### Features
+- Runs every Monday at 00:00 UTC
+- Uses ISO week boundaries (Monday start)
+- Only affects incomplete tasks (status != 'completed')
+- Prevents duplicates
+- Creates audit trail for transparency
+- Can be run manually or via cron job
+
+### Configuration
+
+Set environment variables in your `.env` file:
+
+```bash
+# Enable/disable rollover (default: true)
+ROLLOVER_ENABLED=true
+```
+
+### Manual Rollover
+
+```bash
+# Run rollover script for all users
+npm run rollover
+
+# Dry run to see what would be changed
+npm run rollover:dry
+# or
+npm run rollover -- --dry-run
+
+# Run for specific user
+npm run rollover -- --user-id user123
+```
+
+### Automated Rollover
+
+Add to your crontab for automatic execution:
+
+```bash
+# Run every Monday at 00:00 UTC
+0 0 * * 1 cd /path/to/fluid-calendar && npm run rollover
+```
+
+For detailed documentation, see [docs/ROLLOVER.md](docs/ROLLOVER.md).
+
+## Testing
+
+FluidCalendar includes comprehensive testing for all core functionality, including automated tests and interactive demonstrations.
+
+### Running Unit Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run unit tests only
+npm run test:unit
+
+# Run specific test patterns
+npm run test:unit -- --testPathPattern=rollover
+npm run test:unit -- --testPathPattern=date-utils
+```
+
+### Running Integration Tests
+
+```bash
+# Run integration tests
+npm run test:integration
+
+# Run rollover integration tests specifically
+npm run test:unit -- --testPathPattern=rollover-integration
+```
+
+### Interactive Testing & Demonstrations
+
+#### Visual Rollover Demonstration
+
+The visual rollover test provides an interactive demonstration of the weekly rollover process using the admin account:
+
+```bash
+# Run interactive visual demonstration
+npx tsx visual-rollover-test.ts
+```
+
+This demonstration:
+- Uses the admin account (`admin@admin.admin`) 
+- Creates realistic test tasks from the previous week
+- Shows before/after states with color-coded output
+- Explains each step of the rollover process
+- Automatically cleans up test data
+
+#### Manual Integration Testing
+
+For manual testing and validation:
+
+```bash
+# Create and run custom integration test
+npx tsx test-rollover-integration.ts
+
+# Test database connectivity
+npx tsx test-db-connection.ts
+```
+
+### Docker Environment Testing
+
+When using Docker for testing, run tests inside the container for proper database connectivity:
+
+```bash
+# Copy test scripts to container
+docker cp visual-rollover-test.ts fluid-calendar-app-1:/app/
+docker cp test-rollover-integration.ts fluid-calendar-app-1:/app/
+
+# Run tests inside container
+docker-compose exec app npx tsx visual-rollover-test.ts
+docker-compose exec app npx tsx test-rollover-integration.ts
+```
+
+### Test Database Setup
+
+The test environment includes:
+- **Admin account**: `admin@admin.admin` (used for demonstrations)
+- **Test data**: Created with `VISUAL_TEST_` prefix for easy cleanup
+- **Automatic cleanup**: Test scripts remove their data after completion
+
+### Continuous Integration
+
+Tests are designed to run in CI/CD pipelines with:
+- Docker Compose for isolated test environments
+- Prisma for database schema management
+- Jest for automated testing framework
+- TypeScript for type safety
+
+### Test Coverage
+
+Current test coverage includes:
+- ✅ **Rollover Service**: Unit and integration tests
+- ✅ **Date Utilities**: Date calculation and ISO week handling
+- ✅ **Error Handling**: Throttling and validation
+- ✅ **Database Operations**: CRUD operations and transactions
+- ✅ **Interactive Demos**: Visual testing and validation
+
+For test-specific documentation, see individual test files in `src/__tests__/` and the root-level test scripts.
+
+**📚 For comprehensive testing documentation, see [docs/testing.md](docs/testing.md).**
 
 ## Need Professional Help?
 

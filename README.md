@@ -49,6 +49,7 @@ Don't want to self-host? We're currently beta testing our hosted version at [Flu
 - 🤖 **Intelligent Task Scheduling** - Automatically schedule tasks based on your preferences and availability
 - 📅 **Calendar Integration** - Seamless sync with Google Calendar (more providers coming soon)
 - ⚡ **Smart Time Slot Management** - Finds optimal time slots based on your work hours and buffer preferences
+- 🔄 **Weekly Task Rollover** - Automatically moves incomplete tasks to the next week (Monday 00:00 UTC)
 - 🎨 **Modern UI** - Clean, responsive interface with smooth transitions
 - 🔧 **Customizable** - Adjust scheduling algorithms and preferences to your needs
 - 🔒 **Privacy-Focused** - Self-host your own instance
@@ -306,6 +307,53 @@ bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+## Weekly Task Rollover
+
+FluidCalendar includes an automatic weekly task rollover feature that moves incomplete tasks from the previous ISO week to the current week. This ensures that unfinished tasks don't get lost during week transitions.
+
+### Features
+- Runs every Monday at 00:00 UTC
+- Uses ISO week boundaries (Monday start)
+- Only affects incomplete tasks (status != 'completed')
+- Prevents duplicates
+- Creates audit trail for transparency
+- Can be run manually or via cron job
+
+### Configuration
+
+Set environment variables in your `.env` file:
+
+```bash
+# Enable/disable rollover (default: true)
+ROLLOVER_ENABLED=true
+```
+
+### Manual Rollover
+
+```bash
+# Run rollover script for all users
+npm run rollover
+
+# Dry run to see what would be changed
+npm run rollover:dry
+# or
+npm run rollover -- --dry-run
+
+# Run for specific user
+npm run rollover -- --user-id user123
+```
+
+### Automated Rollover
+
+Add to your crontab for automatic execution:
+
+```bash
+# Run every Monday at 00:00 UTC
+0 0 * * 1 cd /path/to/fluid-calendar && npm run rollover
+```
+
+For detailed documentation, see [docs/ROLLOVER.md](docs/ROLLOVER.md).
 
 ## Need Professional Help?
 

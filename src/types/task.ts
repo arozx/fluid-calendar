@@ -66,6 +66,8 @@ export interface Task {
   source?: string | null;
   externalListId?: string | null;
   lastSyncedAt?: Date | null;
+  // User relationship
+  userId?: string | null;
 }
 
 export interface NewTask

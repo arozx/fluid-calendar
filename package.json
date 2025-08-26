@@ -27,6 +27,10 @@
     "start:worker": "node dist/saas/jobs/worker.js",
     "start:worker:prod": "infisical run --token=\"$INFISICAL_TOKEN\" --projectId=\"$PROJECT_ID\" --env=\"$INFISICAL_SECRET_ENV\" --domain=\"$INFISICAL_API_URL\" -- node dist/saas/jobs/worker-with-aliases.js",
     "docker:publish": "docker build -t fluid-calendar:prod -f docker/production/Dockerfile . && docker tag fluid-calendar:prod eibrahim/fluid-calendar:latest && docker push eibrahim/fluid-calendar:latest",
+    "rollover:run": "tsx scripts/rollover.ts run",
+    "rollover:start": "tsx scripts/rollover.ts start",
+    "rollover:test": "tsx scripts/rollover.ts test",
+    "rollover:status": "tsx scripts/rollover.ts status",
     "prepare": "husky"
   },
   "dependencies": {
@@ -77,6 +81,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.4",
+    "commander": "^14.0.0",
     "cron": "^4.1.0",
     "date-fns": "^3.6.0",
     "date-fns-tz": "^3.2.0",

@@ -245,6 +245,82 @@ export function convertToUserTimezone(date: Date, timezone: string): Date {
   return toZonedTime(dateObj, timezone || "UTC");
 }
 
+/**
+ * Get the start of an ISO week (Monday 00:00 UTC) for a given date
+ * @param date The date to get the week start for
+ * @returns Date representing Monday 00:00 UTC of the week containing the input date
+ */
+export function getISOWeekStart(date: Date): Date {
+  const d = newDate(date);
+  const day = d.getUTCDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  const diff = day === 0 ? -6 : 1 - day; // Calculate days to subtract to get to Monday
+  d.setUTCDate(d.getUTCDate() + diff);
+  d.setUTCHours(0, 0, 0, 0);
+  return d;
+}
+
+/**
+ * Get the end of an ISO week (Sunday 23:59:59.999 UTC) for a given date
+ * @param date The date to get the week end for
+ * @returns Date representing Sunday 23:59:59.999 UTC of the week containing the input date
+ */
+export function getISOWeekEnd(date: Date): Date {
+  const weekStart = getISOWeekStart(date);
+  const weekEnd = newDate(weekStart);
+  weekEnd.setUTCDate(weekEnd.getUTCDate() + 6);
+  weekEnd.setUTCHours(23, 59, 59, 999);
+  return weekEnd;
+}
+
+/**
+ * Check if a date falls within a specific ISO week
+ * @param date The date to check
+ * @param weekStartDate A date within the week to check against
+ * @returns boolean indicating if the date is in the same ISO week
+ */
+export function isInSameISOWeek(date: Date, weekStartDate: Date): boolean {
+  const dateWeekStart = getISOWeekStart(date);
+  const targetWeekStart = getISOWeekStart(weekStartDate);
+  return dateWeekStart.getTime() === targetWeekStart.getTime();
+}
+
+/**
+ * Get the previous ISO week's start date (Monday 00:00 UTC)
+ * @param referenceDate Optional reference date, defaults to current date
+ * @returns Date representing Monday 00:00 UTC of the previous week
+ */
+export function getPreviousISOWeekStart(referenceDate?: Date): Date {
+  const refDate = referenceDate || newDate();
+  const currentWeekStart = getISOWeekStart(refDate);
+  const previousWeekStart = newDate(currentWeekStart);
+  previousWeekStart.setUTCDate(previousWeekStart.getUTCDate() - 7);
+  return previousWeekStart;
+}
+
+/**
+ * Get the next ISO week's start date (Monday 00:00 UTC)
+ * @param referenceDate Optional reference date, defaults to current date
+ * @returns Date representing Monday 00:00 UTC of the next week
+ */
+export function getNextISOWeekStart(referenceDate?: Date): Date {
+  const refDate = referenceDate || newDate();
+  const currentWeekStart = getISOWeekStart(refDate);
+  const nextWeekStart = newDate(currentWeekStart);
+  nextWeekStart.setUTCDate(nextWeekStart.getUTCDate() + 7);
+  return nextWeekStart;
+}
+
+/**
+ * Check if a date is in the previous ISO week
+ * @param date The date to check
+ * @param referenceDate Optional reference date, defaults to current date
+ * @returns boolean indicating if the date is in the previous week
+ */
+export function isInPreviousISOWeek(date: Date, referenceDate?: Date): boolean {
+  const previousWeekStart = getPreviousISOWeekStart(referenceDate);
+  return isInSameISOWeek(date, previousWeekStart);
+}
+
 // Re-export date-fns functions
 export {
   addMinutes,
